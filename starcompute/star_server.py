@@ -27,7 +27,7 @@ class StarProcessingServer:
         self.server_cert_path = os.getenv('STARCOMPUTE_SERVER_CERT_PATH')
         self.server_key_path = os.getenv('STARCOMPUTE_SERVER_KEY_PATH')
 
-        if self.server_cert_path is None or self.client_cert_path is None or self.client_key_path is None:
+        if self.server_cert_path is None or self.client_cert_path is None or self.server_key_path is None:
             err_str = ("Cannot find values of environmental variables for certificates and clients. Make sure the"
                        "following environmental variables are set:\n1. STARCOMPUTE_CLIENT_CERT_PATH\n"
                        "2. STARCOMPUTE_SERVER_CERT_PATH\n3. STARCOMPUTE_SERVER_KEY_PATH")
