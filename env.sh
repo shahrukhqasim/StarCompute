@@ -1,2 +1,3 @@
 #!/bin/bash
-export PYTHONPATH=$PYTHONPATH:`readlink -f python/lib`
+export PYTHONPATH=$PYTHONPATH:`readlink -f .`
+
