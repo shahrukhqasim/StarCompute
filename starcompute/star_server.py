@@ -91,8 +91,9 @@ class StarProcessingServer:
                 # Require clients to present certificates
                 ssl_context.verify_mode = ssl.CERT_REQUIRED
                 ssl_context.load_verify_locations(self.client_cert_path)
+                ssl_context.check_hostname = False
 
-                self.server = await websockets.serve(self.handle_client, "localhost", self.port)
+                self.server = await websockets.serve(self.handle_client, "", self.port, ssl=ssl_context)
                 print("Server started on ws://localhost:%d"%self.port)
                 # while True:
                 #     # print("Server running...")

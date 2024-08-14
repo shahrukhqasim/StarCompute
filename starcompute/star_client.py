@@ -69,6 +69,9 @@ class StarProcessingClient:
         # Load the server's certificate to verify the server
         ssl_context.load_verify_locations(self.server_cert_path)
 
+        ssl_context.check_hostname = False
+        # ssl_context.verify_mode = ssl.CERT_NONE
+
         # Load client's certificate and key
         ssl_context.load_cert_chain(certfile=self.client_cert_path, keyfile=self.client_key_path)
 
@@ -76,7 +79,7 @@ class StarProcessingClient:
 
         while True:
             try:
-                async with websockets.connect("ws://localhost:%d"%self.port) as websocket:
+                async with websockets.connect("wss://localhost:%d"%self.port, ssl=ssl_context) as websocket:
                     async def send_messages():
                         while True:
                             try:
