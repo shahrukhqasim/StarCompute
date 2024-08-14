@@ -37,9 +37,9 @@ server's certificate. The server should have access to client's certificate, ser
 ## Run
 First, run the server:
 ```
-python3 python/bin/run_example_server.py
+python3 examples/run_example_server.py
 ```
 And then you can run one or multiple clients:
 ```
-python3 python/bin/run_example_client.py
+python3 examples/run_example_client.py
 ```
