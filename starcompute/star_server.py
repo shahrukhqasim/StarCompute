@@ -50,27 +50,36 @@ class StarProcessingServer:
         #         num += 1
 
         async def receive_messages():
+            in_processing = None
             while True:
                 try:
                     k, data_to_process = await self.send_queue.get()
+                    in_processing = k, data_to_process
                     print(k)
                     if k == -1:
+                        await websocket.send('stop')
                         break
                     data_result = await websocket.recv()
                     print(f"Server: Received {data_result} from client.")
                     try:
                         print(f"Server: Sending message to process to a slave.")
+                        await websocket.send('process')
                         serialized_obj = pickle.dumps(data_to_process)
                         await websocket.send(serialized_obj)
                         data_result = await websocket.recv()
                         data_result = pickle.loads(data_result)
                         with self.results_dict_lock:
                             self.results_dict[k] = data_result
+                            in_processing = None
                         print("Got back result from a slave")
                     except ValueError:
                         print("Server: Received invalid data_to_process.")
                 except websockets.exceptions.ConnectionClosedOK:
                     print("Server: Connection closed by client.")
+
+                    if in_processing is not None:
+                        await self.send_queue.put(in_processing)
+
                     break
 
         await asyncio.gather(receive_messages())

@@ -85,13 +85,18 @@ class StarProcessingClient:
                             try:
                                 print(f"Client: Sending hello to the server.")
                                 await websocket.send("Helo")
-                                to_process = await websocket.recv()
-                                to_process = pickle.loads(to_process)
-                                processed = self.processing_fn(to_process)
-                                result = pickle.dumps(processed)
-                                print("Sending back processed ")
-                                # print(f"Client: Received {response} from server.")
-                                await websocket.send(result)
+                                command = await websocket.recv()
+                                assert type(command) is str
+                                if command == 'process':
+                                    to_process = await websocket.recv()
+                                    to_process = pickle.loads(to_process)
+                                    processed = self.processing_fn(to_process)
+                                    result = pickle.dumps(processed)
+                                    print("Sending back processed ")
+                                    # print(f"Client: Received {response} from server.")
+                                    await websocket.send(result)
+                                elif command == 'stop':
+                                    return
                             except websockets.exceptions.ConnectionClosedOK:
                                 break
 
@@ -108,6 +113,7 @@ class StarProcessingClient:
                             #     print("Client: Received invalid number.")
 
                     await asyncio.gather(send_messages())
+                    break
             except OSError as e:
                 if num_tries < num_tries_max or num_tries_max == -1:
                     print("Connection failed. Will try again.", file=sys.stderr)
