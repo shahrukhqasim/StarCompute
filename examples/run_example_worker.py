@@ -1,7 +1,7 @@
 import asyncio
 import time
 import numpy as np
-from starcompute.star_client import StarProcessingClient
+from starcompute.star_worker import StarProcessingWorker
 import argh
 
 def process(el):
@@ -12,8 +12,8 @@ def process(el):
 
 
 def main(port=8757):
-    client = StarProcessingClient(port, processing_fn=process)
-    asyncio.run(client.start())
+    worker = StarProcessingWorker(port, processing_fn=process)
+    asyncio.run(worker.start())
     print("Execution finished.")
 
 

@@ -6,7 +6,7 @@ import pickle
 import os
 import sys
 
-class StarProcessingClient:
+class StarProcessingWorker:
     def __init__(self, port, processing_fn, url="ws://localhost"):
         """
         Constructor.
@@ -22,14 +22,14 @@ class StarProcessingClient:
         self.processing_fn = processing_fn
         self.url = url
 
-        self.server_cert_path = os.getenv('STARCOMPUTE_SERVER_CERT_PATH')
-        self.client_cert_path = os.getenv('STARCOMPUTE_CLIENT_CERT_PATH')
-        self.client_key_path = os.getenv('STARCOMPUTE_CLIENT_KEY_PATH')
+        self.manager_cert_path = os.getenv('STARCOMPUTE_MANAGER_CERT_PATH')
+        self.worker_cert_path = os.getenv('STARCOMPUTE_WORKER_CERT_PATH')
+        self.worker_key_path = os.getenv('STARCOMPUTE_WORKER_KEY_PATH')
 
-        if self.server_cert_path is None or self.client_cert_path is None or self.client_key_path is None:
-            err_str = ("Cannot find values of environmental variables for certificates and clients. Make sure the"
-                       "following environmental variables are set:\n1. STARCOMPUTE_SERVER_CERT_PATH\n"
-                       "2. STARCOMPUTE_CLIENT_CERT_PATH\n3. STARCOMPUTE_CLIENT_KEY_PATH")
+        if self.manager_cert_path is None or self.worker_cert_path is None or self.worker_key_path is None:
+            err_str = ("Cannot find values of environmental variables for certificates and keys. Make sure the"
+                       "following environmental variables are set:\n1. STARCOMPUTE_MANAGER_CERT_PATH\n"
+                       "2. STARCOMPUTE_WORKER_CERT_PATH\n3. STARCOMPUTE_WORKER_KEY_PATH")
 
             raise RuntimeError(err_str)
 
@@ -44,8 +44,8 @@ class StarProcessingClient:
 
         :param num_tries_max:
             The maximum number of attempts to establish a connection. If set to -1 (default),
-            the client will keep trying indefinitely until it succeeds. If set to a positive integer,
-            the client will attempt to connect the specified number of times before giving up.
+            the worker will keep trying indefinitely until it succeeds. If set to a positive integer,
+            the worker will attempt to connect the specified number of times before giving up.
 
         :param wait_between_tries:
             The time in seconds to wait between connection attempts if the connection fails.
@@ -55,11 +55,11 @@ class StarProcessingClient:
             None
 
         :raises OSError:
-            If the client fails to connect to the server after the specified number of attempts
+            If the worker fails to connect to the server after the specified number of attempts
             (only if num_tries_max is a positive integer).
 
         The method establishes a WebSocket connection using SSL/TLS, verifies the server's certificate,
-        and loads the client's certificate and key for mutual authentication. After that it will start receiving data
+        and loads the worker's certificate and key for mutual authentication. After that it will start receiving data
         from the server in order to be able to start processing the data.
         """
 
@@ -67,13 +67,13 @@ class StarProcessingClient:
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 
         # Load the server's certificate to verify the server
-        ssl_context.load_verify_locations(self.server_cert_path)
+        ssl_context.load_verify_locations(self.manager_cert_path)
 
         ssl_context.check_hostname = False
         # ssl_context.verify_mode = ssl.CERT_NONE
 
         # Load client's certificate and key
-        ssl_context.load_cert_chain(certfile=self.client_cert_path, keyfile=self.client_key_path)
+        ssl_context.load_cert_chain(certfile=self.worker_cert_path, keyfile=self.worker_key_path)
 
         num_tries = 0
 
@@ -83,7 +83,7 @@ class StarProcessingClient:
                     async def send_messages():
                         while True:
                             try:
-                                print(f"Client: Sending hello to the server.")
+                                print(f"Worker: Sending hello to the server.")
                                 await websocket.send("Helo")
                                 command = await websocket.recv()
                                 assert type(command) is str

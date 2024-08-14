@@ -9,12 +9,12 @@ import ssl
 import threading
 
 
-class StarProcessingServer:
+class StarProcessingManager:
     def __init__(self, port):
         """
         Constructor.
 
-        :param port: The port at which to start the server
+        :param port: The port at which to start the manager
         """
         self.send_queue = asyncio.Queue()
         self.max_k = 0
@@ -23,14 +23,14 @@ class StarProcessingServer:
         self.port = port
         self.shutdown_event = threading.Event()
 
-        self.client_cert_path = os.getenv('STARCOMPUTE_CLIENT_CERT_PATH')
-        self.server_cert_path = os.getenv('STARCOMPUTE_SERVER_CERT_PATH')
-        self.server_key_path = os.getenv('STARCOMPUTE_SERVER_KEY_PATH')
+        self.worker_cert_path = os.getenv('STARCOMPUTE_WORKER_CERT_PATH')
+        self.manager_cert_path = os.getenv('STARCOMPUTE_MANAGER_CERT_PATH')
+        self.manager_key_path = os.getenv('STARCOMPUTE_MANAGER_KEY_PATH')
 
-        if self.server_cert_path is None or self.client_cert_path is None or self.server_key_path is None:
-            err_str = ("Cannot find values of environmental variables for certificates and clients. Make sure the"
-                       "following environmental variables are set:\n1. STARCOMPUTE_CLIENT_CERT_PATH\n"
-                       "2. STARCOMPUTE_SERVER_CERT_PATH\n3. STARCOMPUTE_SERVER_KEY_PATH")
+        if self.manager_cert_path is None or self.worker_cert_path is None or self.manager_key_path is None:
+            err_str = ("Cannot find values of environmental variables for certificates and key. Make sure the"
+                       "following environmental variables are set:\n1. STARCOMPUTE_WORKER_CERT_PATH\n"
+                       "2. STARCOMPUTE_MANAGER_CERT_PATH\n3. STARCOMPUTE_MANAGER_KEY_PATH")
 
             raise RuntimeError(err_str)
 
@@ -60,9 +60,9 @@ class StarProcessingServer:
                         await websocket.send('stop')
                         break
                     data_result = await websocket.recv()
-                    print(f"Server: Received {data_result} from client.")
+                    print(f"Manager: Received {data_result} from worker.")
                     try:
-                        print(f"Server: Sending message to process to a slave.")
+                        print(f"Manager: Sending message to process to a worker.")
                         await websocket.send('process')
                         serialized_obj = pickle.dumps(data_to_process)
                         await websocket.send(serialized_obj)
@@ -73,9 +73,9 @@ class StarProcessingServer:
                             in_processing = None
                         print("Got back result from a slave")
                     except ValueError:
-                        print("Server: Received invalid data_to_process.")
+                        print("Manager: Received invalid data_to_process.")
                 except websockets.exceptions.ConnectionClosedOK:
-                    print("Server: Connection closed by client.")
+                    print("Manager: Connection closed by client.")
 
                     if in_processing is not None:
                         await self.send_queue.put(in_processing)
@@ -84,9 +84,9 @@ class StarProcessingServer:
 
         await asyncio.gather(receive_messages())
 
-    def run_server(self):
+    def run_manager(self):
         """
-        Run the server in another thread. The function will return immediately.
+        Run the manager in another thread. The function will return immediately.
 
         :return: None
         """
@@ -95,11 +95,11 @@ class StarProcessingServer:
             async def _thread_in():
                 # Create SSL context for the server
                 ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-                ssl_context.load_cert_chain(certfile=self.server_cert_path, keyfile=self.server_key_path)
+                ssl_context.load_cert_chain(certfile=self.manager_cert_path, keyfile=self.manager_key_path)
 
                 # Require clients to present certificates
                 ssl_context.verify_mode = ssl.CERT_REQUIRED
-                ssl_context.load_verify_locations(self.client_cert_path)
+                ssl_context.load_verify_locations(self.worker_cert_path)
                 ssl_context.check_hostname = False
 
                 self.server = await websockets.serve(self.handle_client, "", self.port, ssl=ssl_context)
