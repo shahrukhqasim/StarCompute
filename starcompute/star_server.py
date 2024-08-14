@@ -144,7 +144,7 @@ class StarProcessingServer:
 
         results = []
         for t in to_get:
-            results.append(self.results_dict[t])
+            results.append(self.results_dict.pop(t))
 
         self.results_dict = dict()
 

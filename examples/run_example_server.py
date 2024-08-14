@@ -1,13 +1,5 @@
-import asyncio
-import pickle
-import time
-
-import websockets
-import threading
-import ssl
-import threading
 import numpy as np
-from star_server import StarProcessingServer
+from starcompute.star_server import StarProcessingServer
 
 
 if __name__ == "__main__":

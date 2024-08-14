@@ -1,10 +1,7 @@
 import asyncio
 import time
-import ssl
-import websockets
-import pickle
 import numpy as np
-from star_client import StarProcessingClient
+from starcompute.star_client import StarProcessingClient
 
 def process(el):
     # In the example, el is a numpy array, this process functions sums up the element and returns it after waiting
