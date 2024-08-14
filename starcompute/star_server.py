@@ -143,6 +143,8 @@ class StarProcessingServer:
         :return: A list of results.
         """
 
+        assert len(self.results_dict) == 0
+
         to_get = []
         for t in tasks:
             t2 = self.max_k, t
