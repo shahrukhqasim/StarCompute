@@ -34,6 +34,11 @@ These variables will have to be set every time before running the server and the
 them to your `.bashrc` or another environmental file. The client should have access to client's key, certificate, and
 server's certificate. The server should have access to client's certificate, server's key and server's certificate.
 
+The package can be easily installed via pip3. The package is still in development so frequent updates need to be made.
+```
+pip3 install "git+https://github.com/shahrukhqasim/StarCompute"
+```
+
 ## Run
 First, run the server:
 ```
