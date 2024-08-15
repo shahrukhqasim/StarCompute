@@ -7,7 +7,7 @@ import os
 import sys
 
 class StarProcessingWorker:
-    def __init__(self, port, processing_fn, url="ws://localhost"):
+    def __init__(self, port, processing_fn, url="wss://localhost"):
         """
         Constructor.
 
@@ -79,7 +79,8 @@ class StarProcessingWorker:
 
         while True:
             try:
-                async with websockets.connect("wss://localhost:%d"%self.port, ssl=ssl_context) as websocket:
+                print("Connecting to: ", "%s:%d"%(self.url, self.port), file=sys.stderr)
+                async with websockets.connect("%s:%d"%(self.url, self.port)) as websocket:
                     async def send_messages():
                         while True:
                             try:

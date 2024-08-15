@@ -102,7 +102,7 @@ class StarProcessingManager:
                 ssl_context.load_verify_locations(self.worker_cert_path)
                 ssl_context.check_hostname = False
 
-                self.server = await websockets.serve(self.handle_client, "", self.port, ssl=ssl_context)
+                self.server = await websockets.serve(self.handle_client, "", self.port)
                 print("Server started on ws://localhost:%d"%self.port)
                 # while True:
                 #     # print("Server running...")
