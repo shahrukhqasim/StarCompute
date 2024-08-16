@@ -71,24 +71,30 @@ class StarHttpsProcessingWorker:
 
                             pickled_data = pickle.dumps((k, result))
 
-                            # POST the pickled data back to the server
-                            response = requests.post(
-                                '%s:%d' % (self.url, self.port),  # Update the URL to the correct endpoint
-                                data=pickled_data,
-                                verify=self.manager_cert_path,  # Path to server's cert
-                                cert=client_cert,  # Client cert and key
-                                headers={'Content-Type': 'application/octet-stream'}  # Set the appropriate content type
-                            )
+
+                            for i in range(10):
+                                try:
+                                    # POST the pickled data back to the server
+                                    response = requests.post(
+                                        '%s:%d' % (self.url, self.port),  # Update the URL to the correct endpoint
+                                        data=pickled_data,
+                                        verify=self.manager_cert_path,  # Path to server's cert
+                                        cert=client_cert,  # Client cert and key
+                                        headers={'Content-Type': 'application/octet-stream'}  # Set the appropriate content type
+                                    )
+                                    if response.status_code == 200:
+                                        break
+                                except OSError as e:
+                                    print("Connection failed posting back. Will try again.", file=sys.stderr)
+                                    time.sleep(0.05)
+
                             i += 1
 
                             print("Result posted back", response.status_code, response.text)
                             print("Completed", i)
 
-
-
                     except pickle.UnpicklingError as e:
                         print(f"Error unpickling the response: {e}")
-
             except OSError as e:
                 if num_tries < num_tries_max or num_tries_max == -1:
                     print("Connection failed. Will try again.", file=sys.stderr)

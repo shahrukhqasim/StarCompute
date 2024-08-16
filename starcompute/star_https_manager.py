@@ -43,7 +43,7 @@ class StarHttpsManager:
     def run_manager(self):
         def _thread():
             # Create the HTTP server
-            self.httpd = http.server.HTTPServer(('0.0.0.0', self.port), self.handler_factory())
+            self.httpd = http.server.ThreadingHTTPServer(('0.0.0.0', self.port), self.handler_factory())
 
             worker_cert_path = os.getenv('STARCOMPUTE_WORKER_CERT_PATH')
             manager_cert_path = os.getenv('STARCOMPUTE_MANAGER_CERT_PATH')
@@ -109,11 +109,15 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
         super().__init__(*args, **kwargs)
 
     def do_GET(self):
-        print(self.path)
+        # print(self.path)
+        in_processing = None
         if self.path.startswith('/want_work'):
             try:
                 k, data_to_process = self.star_manager.send_queue.get(timeout=2)
+                in_processing = k, data_to_process
                 pickled_data = pickle.dumps((k, data_to_process))
+                print(f"Sending out key: {k}")
+
             except queue.Empty:
                 if self.star_manager.shutdown_flag.is_set():
                     pickled_data = pickle.dumps((-1, None))
@@ -127,6 +131,7 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             # Send the pickled data as the response
             self.wfile.write(pickled_data)
+            in_processing = None
 
         elif self.path.startswith('/check_in'):
             # Send a basic response
@@ -168,8 +173,7 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             k, processed_data = data
 
             # Process the data (example: just print it)
-            print(f"Received key: {k}")
-            print(f"Received processed data: {processed_data}")
+            print(f"Processed key: {k}")
 
             with self.star_manager.results_dict_lock:
                 self.star_manager.results_dict[k] = processed_data
@@ -180,7 +184,7 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-type", "text/html")
             self.end_headers()
-            self.wfile.write(b"Data received and processed successfully\n")
+            self.wfile.write(b"successful\n")
 
         except (pickle.UnpicklingError, EOFError, TypeError) as e:
             # Handle errors in unpickling
