@@ -1,0 +1,5 @@
+syntax = "proto3";
+
+message SerializedDataArray {
+    repeated bytes data = 1;
+}

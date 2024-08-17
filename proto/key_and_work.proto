@@ -1,0 +1,6 @@
+syntax = "proto3";
+
+message KeyAndWork {
+    int32 key = 1;
+    bytes data = 2;
+}

@@ -1,3 +1,4 @@
+import asyncio
 import http.server
 import pickle
 import ssl
@@ -6,21 +7,29 @@ import threading
 import time
 import queue
 from urllib.parse import urlparse, parse_qs
-
+import starcompute.array_of_bytes_pb2 as array_of_bytes_pb2
+import starcompute.key_and_work_pb2 as key_and_work_pb2
+import websockets
 
 
 class StarHttpsManager:
-    def __init__(self, port):
-        self.port = port
+    def __init__(self, port_for_workers, port_for_clients):
+        self.port_for_workers = port_for_workers
+        self.port_for_clients = port_for_clients
 
+        assert self.port_for_workers != self.port_for_clients
+
+        self.client_cert_path = os.getenv('STARCOMPUTE_CLIENT_CERT_PATH')
         self.worker_cert_path = os.getenv('STARCOMPUTE_WORKER_CERT_PATH')
         self.manager_cert_path = os.getenv('STARCOMPUTE_MANAGER_CERT_PATH')
         self.manager_key_path = os.getenv('STARCOMPUTE_MANAGER_KEY_PATH')
 
-        if self.manager_cert_path is None or self.worker_cert_path is None or self.manager_key_path is None:
+        if self.manager_cert_path is None or self.worker_cert_path is None or self.manager_key_path is None\
+                or self.client_cert_path is None:
             err_str = ("Cannot find values of environmental variables for certificates and key. Make sure the"
                        "following environmental variables are set:\n1. STARCOMPUTE_WORKER_CERT_PATH\n"
-                       "2. STARCOMPUTE_MANAGER_CERT_PATH\n3. STARCOMPUTE_MANAGER_KEY_PATH")
+                       "2. STARCOMPUTE_MANAGER_CERT_PATH\n3. STARCOMPUTE_MANAGER_KEY_PATH\n"
+                       "4. STARCOMPUTE_CLIENT_CERT_PATH")
 
             raise RuntimeError(err_str)
         self.httpd = None
@@ -43,7 +52,7 @@ class StarHttpsManager:
     def run_manager(self):
         def _thread():
             # Create the HTTP server
-            self.httpd = http.server.ThreadingHTTPServer(('0.0.0.0', self.port), self.handler_factory())
+            self.httpd = http.server.ThreadingHTTPServer(('0.0.0.0', self.port_for_workers), self.handler_factory())
 
             worker_cert_path = os.getenv('STARCOMPUTE_WORKER_CERT_PATH')
             manager_cert_path = os.getenv('STARCOMPUTE_MANAGER_CERT_PATH')
@@ -58,12 +67,43 @@ class StarHttpsManager:
                                            ca_certs=worker_cert_path)
 
             # Start the HTTPS server
-            print("Serving on https://0.0.0.0:%d"%self.port)
+            print("Serving on https://0.0.0.0:%d" % self.port_for_workers)
             self.httpd.serve_forever()
             self.httpd.server_close()
 
         self.server_thread = threading.Thread(target=_thread)
         self.server_thread.start()
+
+
+        def _thread2():
+            async def _thread_in():
+                # Create SSL context for the server
+                ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                ssl_context.load_cert_chain(certfile=self.manager_cert_path, keyfile=self.manager_key_path)
+
+                # Require clients to present certificates
+                ssl_context.verify_mode = ssl.CERT_REQUIRED
+                ssl_context.load_verify_locations(self.client_cert_path)
+                ssl_context.check_hostname = False
+
+                self.server = await websockets.serve(self.handle_client, "", self.port_for_clients, ssl=ssl_context)
+                print("Websocket started on wss://localhost:%d" % self.port_for_clients)
+                # while True:
+                #     # print("Server running...")
+                #     await asyncio.sleep(10)
+                #     # await asyncio.Future()  # Run forever
+                while not self.shutdown_flag.is_set():
+                    await asyncio.sleep(1)
+
+                    # Stop the server gracefully
+                self.server.close()
+                await self.server.wait_closed()
+
+            asyncio.run(_thread_in())
+            # while True:
+            #     time.sleep(5)
+        self.client_thread = threading.Thread(target=_thread2)
+        self.client_thread.start()
 
     def join(self):
         self.server_thread.join()
@@ -74,6 +114,37 @@ class StarHttpsManager:
         self.shutdown_flag.set()
         time.sleep(wait_to_acknowledge_worker) # wait 30 seconds before actually killing the server
         self.httpd.shutdown()
+
+    async def handle_client(self, websocket, path):
+        async def receive_messages():
+            while True:
+                try:
+                    hello = await websocket.recv()
+                    print(f"Manager: Received {hello} from client")
+                    try:
+                        print(f"Manager: Receiving tasks from the client")
+                        to_process = await websocket.recv()
+                        print(f"Manager: Tasks received")
+
+                        data_array = array_of_bytes_pb2.SerializedDataArray()
+                        data_array.ParseFromString(to_process)
+                        to_process = [x for x in data_array.data]
+                        result = self.run_tasks(to_process)
+
+                        data_array = array_of_bytes_pb2.SerializedDataArray()
+                        for r in result:
+                            data_array.data.append(r)
+                        result = data_array.SerializeToString()
+
+                        await websocket.send(result)
+                        print("Manager: Results sent back to the client")
+                    except ValueError:
+                        print("Manager: Received invalid data_to_process")
+                except websockets.exceptions.ConnectionClosedOK:
+                    print("Manager: Connection closed by client")
+                    break
+
+        await asyncio.gather(receive_messages())
 
     def run_tasks(self, tasks, wait_resolution=0.01):
         """
@@ -115,14 +186,21 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             try:
                 k, data_to_process = self.star_manager.send_queue.get(timeout=2)
                 in_processing = k, data_to_process
-                pickled_data = pickle.dumps((k, data_to_process))
                 print(f"Sending out key: {k}")
 
             except queue.Empty:
                 if self.star_manager.shutdown_flag.is_set():
-                    pickled_data = pickle.dumps((-1, None))
+                    k, data_to_process = (-1, bytes())
                 else:
-                    pickled_data = pickle.dumps((-2, None))
+                    k, data_to_process = (-2, bytes())
+
+            key_and_work = key_and_work_pb2.KeyAndWork()
+            # Set the fields
+            key_and_work.key = k
+            key_and_work.data = data_to_process
+
+            # Serialize the data to a binary string
+            serialized_data = key_and_work.SerializeToString()
 
             # Send a basic response
             # pickle (k, data_to_process)
@@ -130,7 +208,7 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header("Content-type", "application/octet-stream")
             self.end_headers()
             # Send the pickled data as the response
-            self.wfile.write(pickled_data)
+            self.wfile.write(serialized_data)
             in_processing = None
 
         elif self.path.startswith('/check_in'):
@@ -166,11 +244,11 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
         post_data = self.rfile.read(content_length)
 
         try:
-            # Unpickle the data
-            data = pickle.loads(post_data)
+            key_and_work = key_and_work_pb2.KeyAndWork()
 
-            # Assume the unpickled data is a tuple (k, processed_data)
-            k, processed_data = data
+            # Deserialize the binary string back into the object
+            key_and_work.ParseFromString(post_data)
+            k, processed_data = key_and_work.key, key_and_work.data
 
             # Process the data (example: just print it)
             print(f"Processed key: {k}")
@@ -185,13 +263,6 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header("Content-type", "text/html")
             self.end_headers()
             self.wfile.write(b"successful\n")
-
-        except (pickle.UnpicklingError, EOFError, TypeError) as e:
-            # Handle errors in unpickling
-            self.send_response(400)
-            self.send_header("Content-type", "text/html")
-            self.end_headers()
-            self.wfile.write(f"Failed to unpickle data: {str(e)}".encode('utf-8'))
 
         except Exception as e:
             # Handle any other errors
