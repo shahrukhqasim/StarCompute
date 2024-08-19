@@ -52,6 +52,8 @@ type TheManager struct {
 }
 
 func (h *TheManager) workDone(w http.ResponseWriter, r *http.Request) {
+	log.Println("Work done.")
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
