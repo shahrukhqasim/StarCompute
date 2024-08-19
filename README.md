@@ -81,6 +81,6 @@ python3 examples/run_example_worker_https.py --port 443 --url https://34.65.93.2
 ```
 Finally, you can run the client:
 ```
-python3 examples/run_example_client.py 
+python3 examples/run_example_client.py --manager-ip 34.65.93.243 --port 444
 ```
 

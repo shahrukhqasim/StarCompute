@@ -1,6 +1,7 @@
 import os
 import time
 
+import argh
 import numpy as np
 
 from starcompute.star_client import StarClient
@@ -13,8 +14,8 @@ def get_tasks(num_tasks):
 
 
 
-def main(server_ip = '34.65.93.243', port=444):
-    server_url = 'wss://%s:%s'%(server_ip, port)
+def main(manager_ip='34.65.93.244', port=445):
+    server_url = 'wss://%s:%s'%(manager_ip, port)
 
     manager_cert_path = os.getenv('STARCOMPUTE_MANAGER_CERT_PATH')
     client_cert_path = os.getenv('STARCOMPUTE_CLIENT_CERT_PATH')
@@ -40,5 +41,5 @@ def main(server_ip = '34.65.93.243', port=444):
 
 # Usage
 if __name__ == "__main__":
-    main()
+    argh.dispatch_command(main)
 
