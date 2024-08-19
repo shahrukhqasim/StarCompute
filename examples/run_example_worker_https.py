@@ -12,10 +12,10 @@ def process(el):
     time.sleep(0.5)
     return np.sum(el)
 
-def main(port=7778, url='ws://localhost'):
-    print("Will run on", port, url)
+def main(port=7778, manager_ip='localhost'):
+    print("Will run on", port, manager_ip)
     print(starcompute.__version__, starcompute.__file__)
-    worker = StarHttpsProcessingWorker(port, processing_fn=process, url=url)
+    worker = StarHttpsProcessingWorker(port, processing_fn=process, manager_ip=manager_ip)
     worker.start(num_tries_max=-1)
     print("Execution finished.")
 

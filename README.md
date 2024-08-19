@@ -77,7 +77,7 @@ go run -x main.go -port=443 -client_port=444
 And then you can run one or multiple workers. Adjust the IP address as well as the port according to that of the
 manager.
 ```
-python3 examples/run_example_worker_https.py --port 443 --url https://34.65.93.243
+python3 examples/run_example_worker_https.py --port 443 --manager-ip 34.65.93.243
 ```
 Finally, you can run the client:
 ```

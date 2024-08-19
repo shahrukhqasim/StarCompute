@@ -21,20 +21,20 @@ def write_to_file(file_path, text_data):
 
 
 class StarHttpsProcessingWorker:
-    def __init__(self, port, processing_fn, url="https://localhost"):
+    def __init__(self, port, processing_fn, manager_ip="localhost"):
         """
         Constructor.
 
         :param port: The port to connect to.
         :param processing_fn: A callable function which takes one argument, the data to process. It should return the
         result which will be pickled and sent back to the server.
-        :param url: The URL at which the server can be found.
+        :param manager_ip: The URL at which the server can be found.
         """
 
         self.port = port
         assert callable(processing_fn)
         self.processing_fn = processing_fn
-        self.url = url
+        self.url = manager_ip
 
         self.manager_cert_path = os.getenv('STARCOMPUTE_MANAGER_CERT_PATH')
         self.worker_cert_path = os.getenv('STARCOMPUTE_WORKER_CERT_PATH')
@@ -82,7 +82,7 @@ class StarHttpsProcessingWorker:
         while True:
             try:
                 t1 = time.time()
-                response = session.get('%s:%d/want_work' % (self.url, self.port), cert=client_cert)
+                response = session.get('https://%s:%d/want_work' % (self.url, self.port), cert=client_cert)
 
                 # Check if the request was successful
                 if response.status_code == 200:
@@ -117,7 +117,7 @@ class StarHttpsProcessingWorker:
                                     print("Will post to", '%s/work_done:%d' % (self.url, self.port))
                                     # POST the pickled data back to the server
                                     response = session.post(
-                                        '%s:%d/work_done' % (self.url, self.port),  # Update the URL to the correct endpoint
+                                        'https://%s:%d/work_done' % (self.url, self.port),  # Update the URL to the correct endpoint
                                         data=serialized_data,
                                         #verify=self.manager_cert_path,  # Path to server's cert
                                         cert=client_cert,  # Client cert and key
