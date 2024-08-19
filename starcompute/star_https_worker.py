@@ -142,9 +142,10 @@ class StarHttpsProcessingWorker:
 
                     except pickle.UnpicklingError as e:
                         print(f"Error unpickling the response: {e}")
-            except OSError as e:
+            except (OSError, requests.exceptions.ConnectionError) as e:
                 if num_tries < num_tries_max or num_tries_max == -1:
                     print("Connection failed. Will try again.", file=sys.stderr)
                     num_tries += 1
+                    time.sleep(wait_between_tries)
                 else:
                     raise e

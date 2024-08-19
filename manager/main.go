@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"flag"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"google.golang.org/protobuf/proto"
@@ -202,6 +203,9 @@ func main() {
 		dataToProcess: make(chan KeyAndTask, 10000),
 		dataProcessed: make(chan KeyAndTask, 10000),
 	}
+	port := flag.String("port", "443", "Port to run the main HTTPS server on")
+	clientPort := flag.String("client_port", "444", "Port to run the client HTTPS server on")
+	flag.Parse()
 
 	mux1 := http.NewServeMux()
 	//mux1.HandleFunc("/", helloHandler)
@@ -254,14 +258,14 @@ func main() {
 	}
 
 	server := &http.Server{
-		Addr:      ":443",
+		Addr:      ":" + *port,
 		Handler:   mux1, // Default handler (uses http.DefaultServeMux)
 		TLSConfig: tlsConfig,
 	}
 
 	go func() {
 		// Start the HTTPS server with client certificate validation
-		fmt.Println("Starting HTTPS server with client certificate validation on :443")
+		fmt.Printf("Starting HTTPS server with worker certificate validation on :%s\n", *port)
 		if err := server.ListenAndServeTLS(certFile, keyFile); err != nil {
 			fmt.Println("Failed to start server:", err)
 		}
@@ -272,12 +276,12 @@ func main() {
 	mux2.HandleFunc("/", handlerX.handleWebSocket)
 
 	server2 := &http.Server{
-		Addr:      ":444",
+		Addr:      ":" + *clientPort,
 		Handler:   mux2, // Default handler
 		TLSConfig: tlsConfig2,
 	}
 
-	fmt.Println("WebSocket server started at :444 with TLS")
+	fmt.Printf("Starting Websocket server with client certificate validation on :%s\n", *clientPort)
 	if err := server2.ListenAndServeTLS(certFile, keyFile); err != nil {
 		log.Fatal("ListenAndServeTLS error:", err)
 	}

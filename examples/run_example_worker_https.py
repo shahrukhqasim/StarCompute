@@ -16,7 +16,7 @@ def main(port=7778, url='ws://localhost'):
     print("Will run on", port, url)
     print(starcompute.__version__, starcompute.__file__)
     worker = StarHttpsProcessingWorker(port, processing_fn=process, url=url)
-    worker.start(num_tries_max=1)
+    worker.start(num_tries_max=-1)
     print("Execution finished.")
 
 

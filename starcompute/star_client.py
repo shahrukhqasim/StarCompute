@@ -12,13 +12,14 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 class StarClient:
-    def __init__(self, server_url, cert_path, client_cert_path, client_key_path):
+    def __init__(self, server_url, manager_cert_path, client_cert_path, client_key_path):
         self.server_url = server_url
-        self.ssl_context = self.create_ssl_context(cert_path, client_cert_path, client_key_path)
+        self.ssl_context = self.create_ssl_context(manager_cert_path, client_cert_path, client_key_path)
 
-    def create_ssl_context(self, cert_path, client_cert_path, client_key_path):
+
+    def create_ssl_context(self, manager_cert_path, client_cert_path, client_key_path):
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        ssl_context.load_verify_locations(cert_path)
+        ssl_context.load_verify_locations(manager_cert_path)
         ssl_context.check_hostname = False
         ssl_context.load_cert_chain(certfile=client_cert_path, keyfile=client_key_path)
         return ssl_context

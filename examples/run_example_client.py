@@ -1,11 +1,6 @@
-import pickle
-import ssl
+import os
 import time
 
-import websockets
-import asyncio
-import logging
-import requests
 import numpy as np
 
 from starcompute.star_client import StarClient
@@ -17,20 +12,21 @@ def get_tasks(num_tasks):
     return tasks
 
 
-# Usage
-if __name__ == "__main__":
-    server_url = 'wss://34.65.93.243:444'
-    cert_path = '/Users/shahrukhqasim/workspace/uzh/starcompute/crypt/manager_cert.pem'
-    client_cert_path = '/Users/shahrukhqasim/workspace/uzh/starcompute/crypt/client_cert.pem'
-    client_key_path = '/Users/shahrukhqasim/workspace/uzh/starcompute/crypt/client_key.pem'
+
+def main(server_ip = '34.65.93.243', port=444):
+    server_url = 'wss://%s:%s'%(server_ip, port)
+
+    manager_cert_path = os.getenv('STARCOMPUTE_MANAGER_CERT_PATH')
+    client_cert_path = os.getenv('STARCOMPUTE_CLIENT_CERT_PATH')
+    client_key_path = os.getenv('STARCOMPUTE_CLIENT_KEY_PATH')
 
 
     t1 = time.time()
     # Instantiate the client
-    star_client = StarClient(server_url, cert_path, client_cert_path, client_key_path)
+    star_client = StarClient(server_url, manager_cert_path, client_cert_path, client_key_path)
 
     # Generate tasks
-    tasks = get_tasks(10)
+    tasks = get_tasks(50)
 
     # Run the tasks on the server
     result = star_client.run(tasks)
@@ -39,4 +35,10 @@ if __name__ == "__main__":
     print("The result:")
     print(result)
     t2 = time.time()
-    print("Took", t2-t1, "seconds")
+    print("Took", t2 - t1, "seconds")
+
+
+# Usage
+if __name__ == "__main__":
+    main()
+

@@ -15,7 +15,7 @@ def main(port=7778, url='ws://localhost'):
     print("Will run on", port, url)
     print(starcompute.__version__, starcompute.__file__)
     worker = StarProcessingWorker(port, processing_fn=process, url=url)
-    asyncio.run(worker.start(num_tries_max=3))
+    asyncio.run(worker.start(num_tries_max=-1))
     print("Execution finished.")
 
 
